@@ -391,7 +391,7 @@ class GUI:
         for widget_name, widget in total_dict.items():
             if widget_name == "noise_channel_multi-select":
                 continue
-            
+
             widget_min_text = None
             widget_max_text = None
 
@@ -1096,7 +1096,7 @@ class GUI:
         }
 
         self.matrixelements_plot(**value_dict)
-    
+
     def coherence_vs_paramvals_plot_refresh(self, change) -> None:
         scan_dropdown_value = self.qubit_plot_options_widgets[
             "scan_dropdown"
@@ -1114,7 +1114,6 @@ class GUI:
         }
 
         self.coherence_vs_paramvals_plot(**value_dict)
-
 
     # Layout Methods ------------------------------------------------------------------
     def qubit_and_plot_ToggleButtons_layout(self) -> VBox:
@@ -1391,9 +1390,7 @@ class GUI:
 
         return plot_options_widgets_tuple
 
-    def coherence_times_layout(
-        self,
-    ) -> Tuple[Dropdown, SelectMultiple]:
+    def coherence_times_layout(self,) -> Tuple[Dropdown, SelectMultiple]:
         """Creates the children for matrix elements layout.
 
         Returns
@@ -1595,9 +1592,7 @@ class GUI:
         np_list = np.linspace(scan_min, scan_max, self.active_defaults["num_sample"])
         with self.plot_output:
             self.fig, ax = self.active_qubit.plot_coherence_vs_paramvals(
-                scan_value,
-                np_list,
-                noise_channels,
+                scan_value, np_list, noise_channels,
             )
             self.fig.canvas.header_visible = False
             self.fig.set_figwidth(gui_defaults.FIG_WIDTH_INCHES)
