@@ -14,6 +14,7 @@
 import inspect
 
 from pathlib import Path
+from tkinter.tix import Select
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import matplotlib.pyplot as plt
@@ -230,6 +231,7 @@ class GUI:
         ].get_interact_value()
         operator_dropdown_list = self.active_qubit.get_operator_names()
         scan_dropdown_list = self.qubit_scan_params.keys()
+        noise_channel_list = self.active_qubit.supported_noise_channels()
         file = open(self.active_qubit._image_filename, "rb")
         image = file.read()
 
@@ -254,6 +256,13 @@ class GUI:
                 options=operator_dropdown_list,
                 value=self.active_defaults["operator"],
                 description="Operator",
+                disabled=False,
+                layout=std_layout,
+            ),
+            "noise_channel_multi-select": SelectMultiple(
+                options=noise_channel_list,
+                value=noise_channel_list,
+                description="Noise Channels",
                 disabled=False,
                 layout=std_layout,
             ),
@@ -380,6 +389,9 @@ class GUI:
         total_dict = {**self.qubit_plot_options_widgets, **self.qubit_params_widgets}
 
         for widget_name, widget in total_dict.items():
+            if widget_name == "noise_channel_multi-select":
+                continue
+            
             widget_min_text = None
             widget_max_text = None
 
@@ -531,6 +543,8 @@ class GUI:
             plot_option_refresh = self.matelem_vs_paramvals_plot_refresh
         elif current_plot_option == "Matrix elements":
             plot_option_refresh = self.matrixelements_plot_refresh
+        elif current_plot_option == "Coherence times":
+            plot_option_refresh = self.coherence_vs_paramvals_plot_refresh
 
         return plot_option_refresh
 
@@ -584,7 +598,7 @@ class GUI:
         if new_min <= 0 or ("cut" in widget_name and new_min == 1):
             if widget_name == "highest_state_slider":
                 new_min = 1
-            elif widget_name == "wavefunction_domain_slider":
+            elif widget_name == "wavefunction_domain_slider" or widget_name == "flux":
                 pass
             elif widget_name == "wavefunction_scale_slider":
                 new_min = text_widget["min"].step
@@ -983,9 +997,7 @@ class GUI:
 
         self.plot_output.clear_output(wait=True)
         value_dict = {
-            "scan_value": self.qubit_plot_options_widgets[
-                "scan_dropdown"
-            ].get_interact_value(),
+            "scan_value": scan_dropdown_value,
             "scan_range": (scan_slider.min, scan_slider.max),
             "subtract_ground_tf": self.qubit_plot_options_widgets[
                 "subtract_ground_checkbox"
@@ -1048,9 +1060,7 @@ class GUI:
 
         self.plot_output.clear_output(wait=True)
         value_dict = {
-            "scan_value": self.qubit_plot_options_widgets[
-                "scan_dropdown"
-            ].get_interact_value(),
+            "scan_value": scan_dropdown_value,
             "scan_range": (scan_slider.min, scan_slider.max),
             "operator_value": self.qubit_plot_options_widgets[
                 "operator_dropdown"
@@ -1086,6 +1096,25 @@ class GUI:
         }
 
         self.matrixelements_plot(**value_dict)
+    
+    def coherence_vs_paramvals_plot_refresh(self, change) -> None:
+        scan_dropdown_value = self.qubit_plot_options_widgets[
+            "scan_dropdown"
+        ].get_interact_value()
+        scan_slider = self.qubit_params_widgets[scan_dropdown_value]
+        noise_channels = self.qubit_plot_options_widgets[
+            "noise_channel_multi-select"
+        ].get_interact_value()
+
+        self.plot_output.clear_output(wait=True)
+        value_dict = {
+            "scan_value": scan_dropdown_value,
+            "scan_range": (scan_slider.min, scan_slider.max),
+            "noise_channels": noise_channels,
+        }
+
+        self.coherence_vs_paramvals_plot(**value_dict)
+
 
     # Layout Methods ------------------------------------------------------------------
     def qubit_and_plot_ToggleButtons_layout(self) -> VBox:
@@ -1198,8 +1227,10 @@ class GUI:
             plot_option_vbox.children += self.wavefunctions_layout()
         elif current_plot_option == "Matrix element scan":
             plot_option_vbox.children += self.matelem_scan_layout()
-        else:
+        elif current_plot_option == "Matrix elements":
             plot_option_vbox.children += self.matelem_layout()
+        elif current_plot_option == "Coherence times":
+            plot_option_vbox.children += self.coherence_times_layout()
 
         return plot_option_vbox
 
@@ -1360,6 +1391,26 @@ class GUI:
 
         return plot_options_widgets_tuple
 
+    def coherence_times_layout(
+        self,
+    ) -> Tuple[Dropdown, SelectMultiple]:
+        """Creates the children for matrix elements layout.
+
+        Returns
+        -------
+            Tuple of plot options widgets
+        """
+        self.qubit_params_widgets[
+            self.qubit_plot_options_widgets["scan_dropdown"].value
+        ].disabled = True
+
+        plot_options_widgets_tuple = (
+            self.qubit_plot_options_widgets["scan_dropdown"],
+            self.qubit_plot_options_widgets["noise_channel_multi-select"],
+        )
+
+        return plot_options_widgets_tuple
+
     # Plot functions------------------------------------------------------------------
     def evals_vs_paramvals_plot(
         self,
@@ -1514,6 +1565,39 @@ class GUI:
                 mode=mode_value,
                 show_numbers=show_numbers_tf,
                 show3d=show3d_tf,
+            )
+            self.fig.canvas.header_visible = False
+            self.fig.set_figwidth(gui_defaults.FIG_WIDTH_INCHES)
+            self.fig.dpi = gui_defaults.FIG_DPI
+            plt.show()
+        GUI.fig_ax = self.fig, ax
+
+    def coherence_vs_paramvals_plot(
+        self,
+        scan_value: str,
+        scan_range: Tuple[float, float],
+        noise_channels: List[str],
+    ) -> None:
+        """This method will refresh the energy vs paramvals plot using the current
+        values of the plot options widgets as well as the qubit param widgets.
+
+        Parameters
+        ----------
+        scan_value:
+            Current value of the scan parameter dropdown.
+        scan_range:
+            Sets the interval [ min, max ] through
+            which plot_evals_vs_paramvals() will plot over.
+        noise_channels:
+            List of noise channels to be displayed
+        """
+        scan_min, scan_max = scan_range
+        np_list = np.linspace(scan_min, scan_max, self.active_defaults["num_sample"])
+        with self.plot_output:
+            self.fig, ax = self.active_qubit.plot_coherence_vs_paramvals(
+                scan_value,
+                np_list,
+                noise_channels,
             )
             self.fig.canvas.header_visible = False
             self.fig.set_figwidth(gui_defaults.FIG_WIDTH_INCHES)
