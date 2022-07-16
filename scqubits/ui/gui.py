@@ -1477,6 +1477,10 @@ class GUI:
                     which=eigenvalue_states, mode=mode_value
                 )
             else:
+                if len(eigenvalue_states) == 0:
+                    error_label = Label(value="Please select at least one state.")
+                    display(error_label)
+                    return
                 self.fig, ax = self.active_qubit.plot_wavefunction(  # type:ignore
                     which=eigenvalue_states,
                     mode=mode_value,
@@ -1592,8 +1596,14 @@ class GUI:
         scan_min, scan_max = scan_range
         np_list = np.linspace(scan_min, scan_max, self.active_defaults["num_sample"])
         with self.plot_output:
+            if len(noise_channels) == 0:
+                error_label = Label(value="Please select at least one noise channel.")
+                display(error_label)
+                return
             self.fig, ax = self.active_qubit.plot_coherence_vs_paramvals(
-                scan_value, np_list, noise_channels,
+                param_name=scan_value, 
+                param_vals=np_list,
+                noise_channels=noise_channels
             )
             self.fig.canvas.header_visible = False
             self.fig.set_figwidth(gui_defaults.FIG_WIDTH_INCHES)
