@@ -1575,7 +1575,7 @@ class GUI:
         scan_range: Tuple[float, float],
         noise_channels: List[str],
     ) -> None:
-        """This method will refresh the energy vs paramvals plot using the current
+        """This method will refresh the coherence vs paramvals plot using the current
         values of the plot options widgets as well as the qubit param widgets.
 
         Parameters
