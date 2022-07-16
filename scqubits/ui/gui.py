@@ -79,6 +79,7 @@ class GUI:
     @utils.Required(ipywidgets=_HAS_IPYWIDGETS, IPython=_HAS_IPYTHON)
     def __init__(self):
         scq.settings.PROGRESSBAR_DISABLED = False
+        scq.settings.T1_DEFAULT_WARNING=False
 
         # Display Elements
         self.fig: Figure
