@@ -79,7 +79,7 @@ class GUI:
     @utils.Required(ipywidgets=_HAS_IPYWIDGETS, IPython=_HAS_IPYTHON)
     def __init__(self):
         scq.settings.PROGRESSBAR_DISABLED = False
-        scq.settings.T1_DEFAULT_WARNING=False
+        scq.settings.T1_DEFAULT_WARNING = False
 
         # Display Elements
         self.fig: Figure
@@ -1601,9 +1601,7 @@ class GUI:
                 display(error_label)
                 return
             self.fig, ax = self.active_qubit.plot_coherence_vs_paramvals(
-                param_name=scan_value, 
-                param_vals=np_list,
-                noise_channels=noise_channels
+                param_name=scan_value, param_vals=np_list, noise_channels=noise_channels
             )
             self.fig.canvas.header_visible = False
             self.fig.set_figwidth(gui_defaults.FIG_WIDTH_INCHES)
