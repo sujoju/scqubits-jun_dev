@@ -178,9 +178,27 @@ class GUI:
     def initialize_noise_param_widgets(self) -> None:
         """Creates all the widgets associated with coherence times plots
         """
-        for noise_param, noise_param_val in noise.NOISE_PARAMS.items():
+        self.noise_param_widgets.clear()
+        noise_params = ["T", "omega_low", "omega_high", "t_exp"]
+        noise_channels = self.active_qubit.supported_noise_channels()
+
+        if "tphi_1_over_f_flux" in noise_channels:
+            noise_params.append("A_flux")
+        if "tphi_1_over_f_cc" in noise_channels:
+            noise_params.append("A_cc")
+        if "tphi_1_over_f_ng" in noise_channels:
+            noise_params.append("A_ng")
+        if "t1_charge_impedance" in noise_channels or "t1_flux_bias_line" in noise_channels:
+            noise_params.append("R_0")
+        if "t1_flux_bias_line" in noise_channels:
+            noise_params.append("M")
+        if "t1_quasiparticle_tunneling" in noise_channels:
+            noise_params.append("x_qp")
+            noise_params.append("Delta")
+        
+        for noise_param in noise_params:
             self.noise_param_widgets[noise_param] = FloatText(
-                value=noise_param_val, 
+                value=noise.NOISE_PARAMS[noise_param], 
                 disalbed=False,
                 description=noise_param,
                 step=0.001,
@@ -1234,7 +1252,18 @@ class GUI:
         for i in range(len(noise_channels)):
             noise_channel = noise_channels[i]
             if "tphi_1_over_f" in noise_channel:
-                noise_channels[i] = (noise_channel, noise_params_dict)
+                tphi_dict = {
+                    "omega_low": noise_params_dict["omega_low"],
+                    "omega_high": noise_params_dict["omega_high"],
+                    "t_exp": noise_params_dict["t_exp"],
+                }
+                if "flux" in noise_channel:
+                    tphi_dict["A_noise"] = noise_params_dict["A_flux"]
+                elif "cc" in noise_channel:
+                    tphi_dict["A_noise"] = noise_params_dict["A_cc"]
+                elif "ng" in noise_channel: 
+                    tphi_dict["A_noise"] = noise_params_dict["A_ng"]
+                noise_channels[i] = (noise_channel, tphi_dict)
             elif noise_channel == "t1_flux_bias_line":
                 noise_channels[i] = (noise_channel, dict(M=noise_params_dict["M"], Z=noise_params_dict["R_0"]))
             elif noise_channel == "t1_charge_impedance":
@@ -1355,29 +1384,39 @@ class GUI:
         HBox_layout = Layout(display="flex", object_fit="contain", width="100%")
         noise_params_grid = HBox(layout=HBox_layout)
 
-        left_right_HBox_layout = Layout(
-            display="flex",
-            flex_flow="column nowrap",
-            object_fit="contain",
-            width="50%",
-        )
-        left_HBox = HBox(layout=left_right_HBox_layout)
-        right_HBox = HBox(layout=left_right_HBox_layout)
+        params_size = len(self.noise_param_widgets)
+        if params_size > 6:
+            left_right_HBox_layout = Layout(
+                display="flex",
+                flex_flow="column nowrap",
+                object_fit="contain",
+                width="50%",
+            )
+            left_HBox = HBox(layout=left_right_HBox_layout)
+            right_HBox = HBox(layout=left_right_HBox_layout)
 
-        counter = 1
-        for noise_param_widget in self.noise_param_widgets.values():
-            noise_param_widget.layout.width = "50%"
+            counter = 1
+            for noise_param_widget in self.noise_param_widgets.values():
+                noise_param_widget.layout.width = "50%"
+                if params_size % 2 == 0:
+                    if counter <= params_size / 2:
+                        left_HBox.children += (noise_param_widget,)
+                    else:
+                        right_HBox.children += (noise_param_widget,)
+                else:
+                    if counter <= params_size / 2 + 1:
+                        left_HBox.children += (noise_param_widget,)
+                    else:
+                        right_HBox.children += (noise_param_widget,)
+                counter += 1
 
-            if counter <= 6:
-                left_HBox.children += (noise_param_widget,)
-            else:
-                right_HBox.children += (noise_param_widget,)
-            counter += 1
-
-        noise_params_grid.children += (
-            left_HBox,
-            right_HBox,
-        )
+            noise_params_grid.children += (
+                left_HBox,
+                right_HBox,
+            )
+        else:
+            noise_params_grid.layout.flex_flow = "column nowrap"
+            noise_params_grid.children = list(self.noise_param_widgets.values())
 
         return noise_params_grid
 
